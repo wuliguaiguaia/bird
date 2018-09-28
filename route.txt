@@ -1,0 +1,25 @@
+对象：
+
+步骤：
+1.小鸟构造函数
+2.背景构造函数
+3.地板构造函数
+4.水管构造函数
+5.碰撞
+6.计分器
+
+
+
+requestAnimationFrame //根据浏览器刷新频率来 取代 settimeout
+
+1.自加顺序
+    let a=2;  ++a为3；a++为2； 自加之后a都为3；
+    
+2. 键码：
+   e.charCode: 对字符
+   e.keyCode： 对字符与非字符
+   具体字符串:
+   e.char: 对字符
+   e.key: 对字符与非字符
+   首选key keycode
+     

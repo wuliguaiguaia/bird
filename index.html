@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>fly bird
+    </title>
+    <style>
+        body{
+            margin: 0;
+            background-color: #333;
+        }
+        canvas{
+            margin: 60px 150px ;
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas" width="285" height="512"></canvas>
+</body>
+<script>
+    let canvas = document.querySelector("#canvas");
+    let w = canvas.offsetWidth;
+    let h = canvas.offsetHeight;
+
+    function imgtoobj(src){
+        let temp = [];
+        for(let i in src){
+            let img = document.createElement("img");
+            img.src =  "images/" + src[i] + ".png";
+            temp.push(img)
+        }
+        return temp;
+    }
+    class Bird {       //小鸟构造函数
+        constructor(x,y){
+            this.x = x;
+            this.y = y;
+            this.vy = 0;
+            this.src = ["bird0_0","bird0_1","bird0_2"];
+            this.obj = imgtoobj(this.src);
+            this.count = 0;  //计数 
+            this.c = 0 ;
+            this.rotate = Math.PI/4;
+            this.translateX=0;
+            this.translateY=0;
+            this.g = .4;
+            this.w = 35;
+            this.h = 29;
+        }
+        draw(cxt){
+            this.translateX=this.x;
+            this.translateY=this.y;
+            cxt.save();
+            cxt.translate(this.translateX+24,this.translateY+24);//必须加，因为小鸟中心 设为原点
+            cxt.rotate(this.rotate);
+            cxt.drawImage(this.obj[this.c],-24,-24);  //必须是-24 否则会有瞬间切换角度的现象
+            this.run();
+            cxt.restore();
+        }
+        run(){
+            
+            this.vy += this.g
+            this.y += this.vy;
+            if(this.y >= 364){
+                this.y = 364;
+                this.rotate = 0;
+            }
+            if(this.y<=-10){
+                this.rotate = 0;
+                this.y = -10;
+                this.vy = this.g;
+            }
+            // this.count = this.count >= 2  ? 0 : ++this.count; //++在前，为1，++在后，为0
+            this.count = this.count > 14  ? 0 : this.count++;
+            this.c = Math.floor((this.count++/5)%3); //每五次 对 3 取余
+            // console.log("y",this.y,"g",this.g,"vy",this.vy)
+            
+        }
+        jump(){
+            this.rotate = 0;
+            this.vy = -7;
+        }
+        down(){
+            this.rotate = Math.PI/4;
+        }
+    }
+    class Background{   //背景构造函数
+        constructor(x,y){
+            this.x=x;
+            this.y=y;
+            this.src = ["bg_day","bg_night"];
+            this.obj = imgtoobj(this.src);
+            this.vx=-4;
+        }
+        draw(cxt,num){
+            cxt.drawImage(this.obj[num],this.x,this.y);
+            cxt.drawImage(this.obj[num],this.x+w,this.y);
+            this.run();
+        }
+        run(){
+            this.x+=this.vx;
+            if(this.x<-w){
+                this.x=0;
+            }
+        }
+    }
+    class Floor{     //地板构造函数
+        constructor(x,y){
+            this.x=x;
+            this.y=y;
+            this.vx = -4;
+            this.src= ["land"];
+            this.obj = imgtoobj(this.src);
+        }
+        draw(cxt,num){
+           cxt.drawImage(this.obj[0],this.x,this.y); 
+           cxt.drawImage(this.obj[0],this.x+w,this.y); 
+           this.run();
+        }
+        run(){
+            this.x += this.vx;
+            if(this.x<-w){
+                this.x=0;
+            }
+        }
+    }
+    class Pipe{  //水管函数
+        constructor(){
+            this.x = w;
+            this.h = 320;
+            this.w = 52;
+            this.vx = -4;
+            this.src = ["pipe_down","pipe_up"];
+            this.obj = imgtoobj(this.src);
+            this.random = Math.floor(Math.random() * 100 + (-50)); //50 --- 200
+            this.y1 = -170 + this.random;    
+            this.y2 =  250 + this.random;    
+        }
+        draw(cxt,num){
+            cxt.drawImage(this.obj[0],this.x,this.y1);
+            cxt.drawImage(this.obj[1],this.x,this.y2);
+            this.run();
+        }
+        run(){
+            this.x += this.vx;
+            if(this.x < -this.w){
+                this.x = w;
+                this.random =Math.floor(Math.random() * 100 + (-50)); //50 --- 200
+                this.y1 = -170 + this.random;    
+                this.y2 =  250 + this.random;     
+            }
+            // console.log("random",this.random,"y1",this.y1,"y2",this.y2)
+        }
+    }
+    class Score{
+        constructor(){
+            this.x = 0;
+            this.y =  30;
+            this.num = 0;
+            this.count = 0; //计时
+            this.c= 0; 
+            this.flag = true; 
+            this.src = ["text_game_over","score_panel","medals_0","medals_1","medals_2","medals_3"];
+            this.obj = imgtoobj(this.src);
+            this.best = 0;
+            this.arr = [];
+            this.grade1 = 5;
+            this.grade2 = 10;
+            this.grade3 = 15;
+        }
+        draw(cxt){ 
+            cxt.font = "20px Verdana";
+            cxt.fillStyle = "red";
+            cxt.fillText("Score:"+this.num,this.x,this.y);
+            if(this.flag){
+                this.run();
+            }
+        }
+        run(){
+            // 浏览器刷新 5 次 加一次；
+            if(this.count++ % 30  == 0){
+                this.num++;
+            }
+        }
+        pause(){
+            this.flag = false;
+        }
+        over(cxt){
+            if(localStorage.lastArr){
+                this.arr  = localStorage.lastArr.split(",");
+            }
+            this.arr.push(this.num);
+            this.best = Math.max(...this.arr);
+
+            cxt.drawImage(this.obj[0],50,150);
+            cxt.drawImage(this.obj[1],30,200);
+            cxt.fillStyle  = "#222";
+            cxt.font ="15px Verdana";
+            cxt.fillText(this.num,210,250)
+            cxt.fillText(this.best,210,290)
+            localStorage.lastArr = this.arr;
+            this.grade(cxt);
+        }
+        grade(cxt){
+            if(this.num >= this.grade3){
+                this.goalobj = this.obj[5];
+            }else if(this.num >= this.grade2){
+                this.goalobj = this.obj[4];
+            }else if(this.num >= this.grade1){
+                this.goalobj = this.obj[3];
+            }else if(this.num < this.grade1){
+                this.goalobj = this.obj[2];
+            }
+            console.log(this.goalobj)
+            cxt.drawImage(this.goalobj,60,245);
+        }
+    }
+    
+    class Scene{
+        constructor(canvas){
+            this.canvas = canvas;
+            this.cxt = this.canvas.getContext("2d");
+            this.flag = 0;
+            this.init();
+        }
+        init(){
+            this.bird = new Bird(100,200);
+            this.bg = new Background(0,0);
+            this.floor = new Floor(0,400);
+            this.pipe = new Pipe();
+            this.score = new Score();
+            this.register();
+            this.render();
+        }
+        render(){
+            if(this.flag == 0){
+                this.cxt.clearRect(0,0,w,h)
+                this.bg.draw(this.cxt,1);
+                this.pipe.draw(this.cxt);
+                this.floor.draw(this.cxt);
+                this.bird.draw(this.cxt);
+                this.score.draw(this.cxt);
+                requestAnimationFrame(()=>this.render());
+                this.collide(this.bird,this.pipe);
+            }else if(this.flag == 2){
+                this.score.pause();
+                this.score.over(this.cxt);
+            }
+        }
+        register(){
+            document.addEventListener("keydown",(e)=>{  
+                if(e.key == "Enter"){
+                    this.bird.jump(); // 自由掉落为 45度，点击变0；
+                }
+            },false);
+            document.addEventListener("keyup",(e)=>{  
+                    this.bird.down();  
+            },false);
+            document.addEventListener("click",(e)=>{
+                this.flag = 1;
+            })
+        }
+        collide(bird,pipe){ //碰撞判断
+
+            // let bird=[]; //小鸟椭圆曲线精准判断
+            // let count = 0;
+            // for(let x= (-24);x < 24;x++) {   //循环小鸟图片的所有像素点，符合条件的保存在数组
+            //     for(let y= (-24);y < 24;y++) {
+            //         if(Math.floor((x^2)/(22^2) + (y^2)/(16^2)) ==1){
+            //             bird.push([x,y]);
+            //         }
+            //     }
+            // }
+            let birdArr = []; 
+            let pipeArr = []; 
+            let bird0 = [bird.x,bird.y];
+            let bird1 = [bird.x+bird.w,bird.y];
+            let bird2 = [bird.x+bird.w,bird.y+bird.h];
+            let bird3 = [bird.x,bird.y+bird.h];
+            let pipeTop = [[pipe.x,pipe.y1],[pipe.w,pipe.h]];
+            let pipeBottom = [[pipe.x,pipe.y2],[pipe.w,pipe.h]];
+
+            birdArr[0]= bird0;
+            birdArr[1]= bird1;
+            birdArr[2]= bird2;
+            birdArr[3]= bird3;
+            pipeArr[0]= pipeTop;
+            pipeArr[1]= pipeBottom;
+
+            for(let item1 of birdArr){
+                for( let item2 of pipeArr){
+                    if(this.pInBox(item1,item2)){
+                        this.flag = 2;
+                        break;
+                    }
+                }
+            }
+        }
+        pInBox(p,arr){
+            return (p[0]>arr[0][0] && p[0]<arr[0][0]+arr[1][0] && p[1]<arr[0][1]+arr[1][1] && p[1]>arr[0][1]);
+        }
+    }
+    new Scene(canvas);
+   
+</script>
+</html>
